@@ -91,8 +91,8 @@ test (default 15), `SUSTAIN_S` the sustained-write duration in seconds (default
 120), and `ONLY` limits the tests (`latency,sustained,large`).
 
 Excel Online isn't in the benchmark. Microsoft's API terms don't allow
-publishing performance tests of its services without a written agreement, so we
-report only the stale-write behaviour for Excel.
+performance testing of its services without a written agreement, so for Excel
+this repository tests only the stale-write behaviour.
 
 Your numbers will differ from ours depending on where you run from. Both
 services are on the public internet, and Google's quotas depend on your project.
