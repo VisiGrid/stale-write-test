@@ -97,6 +97,11 @@ report only the stale-write behaviour for Excel.
 Your numbers will differ from ours depending on where you run from. Both
 services are on the public internet, and Google's quotas depend on your project.
 
+Both APIs rate-limit writes. Google allows 60 write requests a minute per user.
+VisiGrid allows 300 writes and 600 reads a minute per token, each write up to
+1,000 cells. Over either limit you get a 429; `bench.mjs` counts those as
+refusals and backs off for a second.
+
 ## License
 
 MIT
