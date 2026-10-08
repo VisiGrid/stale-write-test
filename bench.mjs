@@ -5,7 +5,7 @@
 //
 // Google: each test adds a tab to SHEET_ID and deletes it afterwards.
 // VisiGrid: VISIGRID_SHEET should be an empty scratch workbook; its first sheet
-// is overwritten. Optional: N (samples per test, default 15), SUSTAIN_S (default
+// is overwritten, so don't use it while the benchmark runs. Optional: N (samples per test, default 15), SUSTAIN_S (default
 // 120), ONLY (comma list of latency,sustained,large).
 import assert from 'node:assert/strict';
 
@@ -70,6 +70,9 @@ const visigrid = {
     const edits = cells.map(([r, c, v]) => typeof v === 'string' && v.startsWith('=') ? { ref: ref(r, c), formula: v } : { ref: ref(r, c), value: v });
     const r = await timed(`${VG}/cells`, { method: 'POST', headers: vh, body: JSON.stringify({ expected_revision: revision, edits }) });
     if (r.status === 200) revision = r.json.revision;
+    // Someone else wrote the workbook (a person, another script): the write
+    // was refused, as designed. Reread the revision so the run continues.
+    if (r.status === 409) await visigrid.read('A1');
     return r;
   },
   read: async range => {
@@ -114,7 +117,7 @@ try {
         const r = t === 'Sheets' ? await sheets.write(tab, block(100, i)) : await visigrid.write(block(100, i));
         codes[r.status] = (codes[r.status] || 0) + 1;
         if (r.status === 200) ok++;
-        else if (!firstRefusal) firstRefusal = `after ${ok} writes: HTTP ${r.status} ${r.text.slice(0, 100).replace(/\s+/g, ' ')}`;
+        else if (r.status !== 409 && !firstRefusal) firstRefusal = `after ${ok} writes: HTTP ${r.status} ${r.text.slice(0, 100).replace(/\s+/g, ' ')}`;
         if (r.status === 429) await pause(1000);
       }
       console.log(`sustained ${t}: ${ok} writes in ${SUSTAIN_S}s (${Math.round(ok * 60 / SUSTAIN_S)}/min), status counts ${JSON.stringify(codes)}${firstRefusal ? `, first refusal ${firstRefusal}` : ''}`);

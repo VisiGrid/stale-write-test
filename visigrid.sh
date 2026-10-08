@@ -17,8 +17,16 @@ put "$(read_a1 | jq .revision)" "original" >/dev/null
 seen=$(read_a1)
 rev=$(jq .revision <<<"$seen")
 echo "A and B both read A1:           $(jq -r '.cells[0].value // ""' <<<"$seen") (revision $rev)"
-echo "A writes 'writer A':            HTTP $(put "$rev" 'writer A')"
-echo "B writes from its stale read:   HTTP $(put "$rev" 'writer B')"
+a=$(put "$rev" 'writer A')
+echo "A writes 'writer A':            HTTP $a"
+b=$(put "$rev" 'writer B')
+echo "B writes from its stale read:   HTTP $b"
 final=$(read_a1 | jq -r '.cells[0].value // ""')
 echo "A1 is now:                      $final"
-[ "$final" = "writer A" ] && echo "=> stale write refused" || echo "=> A's edit was overwritten, and nobody was told"
+if [ "$a" != 200 ] || { [ "$b" != 200 ] && [ "$b" != 409 ]; }; then
+  echo "=> inconclusive: a write failed (HTTP $a / $b), so nothing was tested; wait a minute and rerun"
+elif [ "$final" = "writer A" ]; then
+  echo "=> stale write refused"
+else
+  echo "=> A's edit was overwritten, and nobody was told"
+fi

@@ -14,10 +14,18 @@ get() { curl -sf "$url" "${auth[@]}" | jq -r '.values[0][0] // ""'; }
 
 put "original" >/dev/null
 echo "A and B both read A1:           $(get)"
-echo "A writes 'writer A':            HTTP $(put 'writer A')"
+a=$(put 'writer A')
+echo "A writes 'writer A':            HTTP $a"
 # B computed its value from the read above. The API has no way to say so:
 # no revision, no precondition, no If-Match on values.update.
-echo "B writes from its stale read:   HTTP $(put 'writer B')"
+b=$(put 'writer B')
+echo "B writes from its stale read:   HTTP $b"
 final=$(get)
 echo "A1 is now:                      $final"
-[ "$final" = "writer A" ] && echo "=> stale write refused" || echo "=> A's edit was overwritten, and nobody was told"
+if [ "$a" != 200 ] || { [ "$b" != 200 ] && [ "$b" != 409 ]; }; then
+  echo "=> inconclusive: a write failed (HTTP $a / $b), so nothing was tested; wait a minute and rerun"
+elif [ "$final" = "writer A" ]; then
+  echo "=> stale write refused"
+else
+  echo "=> A's edit was overwritten, and nobody was told"
+fi
