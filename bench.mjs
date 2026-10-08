@@ -135,10 +135,20 @@ try {
       cells.push([r, 10, `=SUM(A${r + 1}:J${r + 1})`]);
     }
     const gTab = await addTab(rows + 10, 12);
+    // Loading takes 45 writes per service; after the sustained test both
+    // services' per-minute windows may still be full, so wait out a 429.
+    const load = async write => {
+      for (let attempt = 0; ; attempt++) {
+        const r = await write();
+        if (r.status === 200) return;
+        assert.ok(r.status === 429 && attempt < 10, `loading the large sheet: HTTP ${r.status} ${r.text.slice(0, 200)}`);
+        await pause(10000);
+      }
+    };
     for (let i = 0; i < cells.length; i += 1000) {
       const part = cells.slice(i, i + 1000);
-      assert.equal((await sheets.write(gTab, part)).status, 200);
-      assert.equal((await visigrid.write(part)).status, 200);
+      await load(() => sheets.write(gTab, part));
+      await load(() => visigrid.write(part));
     }
     for (const t of ['Sheets', 'VisiGrid']) {
       const ms = [];
